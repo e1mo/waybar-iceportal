@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+
+import json
+import requests
+import argparse
+import pathlib
+from datetime import datetime 
+
+parser = argparse.ArgumentParser(
+    description='Waybar module for the ICE Portal (Train Info, Stops, WiFi Status). Nothing will be displayed if the iceportal is not reachable (e.G. you are not in an ICE or the WiFi is down)'
+)
+parser.add_argument(
+    "--dummy-data",
+    help="Folder to load dummy data from. {status,trip}.json must be present."
+)
+
+parser.add_argument(
+    "--dump",
+    help="Dump trip / status json to a subfolder within the specified folder. If no value is specified, will create a folder 'data-dump' besides the script.",
+    nargs='?',
+    const='__def__'
+)
+
+args = parser.parse_args()
+
+if args.dummy_data is None:
+    try:
+        r = requests.get("https://iceportal.de/api1/rs/status")
+    except requests.exceptions.ConnectionError:
+        exit(0)
+
+    if not r.ok:
+        exit(0)
+
+    status=r.json()
+    status_r = r
+    r = requests.get("https://iceportal.de/api1/rs/tripInfo/trip")
+    trip = r.json()["trip"]
+    trip_r = r
+
+    if args.dump is not None:
+        if args.dump == "__def__":
+            out_path_root=pathlib.Path(__file__).parent / 'data-dump'
+        else:
+            out_path_root=pathlib.Path(args.dump)
+
+        output_foldername = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        out_path_root /= output_foldername 
+        out_path_root.mkdir(parents=True)
+
+        with open(out_path_root / 'status.json', 'w') as f:
+            f.write(status_r.text)
+        with open(out_path_root / 'trip.json', 'w') as f:
+            f.write(trip_r.text)
+else:
+    with open(f"{args.dummy_data}/status.json") as f:
+        status = json.load(f)
+
+    with open(f"{args.dummy_data}/trip.json") as f:
+        trip = json.load(f)["trip"]
+
+
+output={}
+tooltip_lines=[]
+
+wagon_class="1st" if status["wagonClass"] == "FIRST" else "2nd"
+
+starting_station = trip["stops"][0]
+
+train_name_dest = "<u><b>"
+train_name_dest += trip["trainType"]
+train_name_dest += trip["vzn"]
+train_name_dest += " → "
+train_name_dest += trip["stopInfo"]["finalStationName"].split()[0]
+train_name_dest += "</b></u>"
+tooltip_lines.append(train_name_dest)
+tooltip_lines.append(f"{starting_station['station']['name']} → {trip['stopInfo']['finalStationName']}")
+tooltip_lines.append(f"Series {status['series']} / {status['tzn']}")
+tooltip_lines.append(f"{wagon_class} Class")
+tooltip_lines.append(f"{status['speed']} Km/h\n")
+
+
+current_next_stop=trip["stopInfo"]["actualNext"]
+
+tooltip_lines.append("<b>Next stops</b>")
+next_stop=""
+for stop in trip["stops"]:
+    _stop = {}
+    if stop["info"]["passed"]:
+        continue
+
+    is_current_stop = stop["station"]["evaNr"] == current_next_stop
+    name = stop["station"]["name"]
+    _arrivalActual = datetime.fromtimestamp(stop["timetable"]["actualArrivalTime"] / 1000)
+    arrivalActual = _arrivalActual.strftime("%H:%M") # TOOD: When will the train leave?
+    _delay = stop["timetable"]["arrivalDelay"]
+    stop["track"]["scheduled"] = "102"
+    track = stop["track"]["actual"]
+    if len(_delay) > 0:
+        delay = f" ({_delay})"
+    else:
+        delay = ""
+
+    stop_string = f"{name} ({track}) at {arrivalActual}{delay}"
+    if is_current_stop:
+        next_stop=stop_string
+        stop_string=f"<i>{stop_string}</i>"
+
+    tooltip_lines.append(
+        stop_string
+    )
+
+wifi_connectivity_seconds = status["connectivity"]["remainingTimeSeconds"]
+wifi_connectivity_minutes = int((wifi_connectivity_seconds - (wifi_connectivity_seconds % 60)) / 60)
+wifi_connectivity_seconds = str(int(wifi_connectivity_seconds - wifi_connectivity_minutes * 60)).zfill(2) # okay thats a bit dirty but it works
+wifi_current_status = status["connectivity"]["currentState"].lower()
+wifi_next_status = status["connectivity"]["nextState"].lower()
+
+tooltip_lines.append("\n<b>WiFi</b>")
+tooltip_lines.append(f"Quality: {wifi_current_status}")
+tooltip_lines.append(f"Change to {wifi_next_status} in {wifi_connectivity_minutes}:{wifi_connectivity_seconds}")
+
+servertime = datetime.fromtimestamp(status["serverTime"] / 1000)
+servertime = servertime.strftime("%Y-%m-%d %H-%M-%S")
+tooltip_lines.append(f"<i>Last servertime: {servertime}</i>")
+
+output["text"] = next_stop
+#output["wifiStatus"] = f"WiFi: {status['internet']} 🚄"
+output["tooltip"] = "\n".join(tooltip_lines)
+
+print(json.dumps(output))
