@@ -2,6 +2,8 @@
 
 A simple [waybar] module to display the status of the ICE you are currently in using the ICE Portals JSON API.
 
+![](preview.png)
+
 ## Installation
 
 0. Ensure python[^pyver] is installed: `python3 --version`
