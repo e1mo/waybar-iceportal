@@ -110,11 +110,16 @@ for stop in trip["stops"]:
         stop_string
     )
 
-wifi_connectivity_seconds = status["connectivity"]["remainingTimeSeconds"]
-wifi_connectivity_minutes = int((wifi_connectivity_seconds - (wifi_connectivity_seconds % 60)) / 60)
-wifi_connectivity_seconds = str(int(wifi_connectivity_seconds - wifi_connectivity_minutes * 60)).zfill(2) # okay thats a bit dirty but it works
 wifi_current_status = status["connectivity"]["currentState"].lower()
-wifi_next_status = status["connectivity"]["nextState"].lower()
+wifi_connectivity_seconds = status["connectivity"]["remainingTimeSeconds"]
+if wifi_connectivity_seconds is not None:
+    wifi_connectivity_minutes = int((wifi_connectivity_seconds - (wifi_connectivity_seconds % 60)) / 60)
+    wifi_connectivity_seconds = str(int(wifi_connectivity_seconds - wifi_connectivity_minutes * 60)).zfill(2) # okay thats a bit dirty but it works
+    wifi_next_status = status["connectivity"]["nextState"].lower()
+else:
+    wifi_next_status = '???'
+    wifi_connectivity_minutes = '??'
+    wifi_connectivity_seconds = '??'
 
 tooltip_lines.append("\n<b>WiFi</b>")
 tooltip_lines.append(f"Quality: {wifi_current_status}")
