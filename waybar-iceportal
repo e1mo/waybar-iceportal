@@ -94,6 +94,16 @@ for stop in trip["stops"]:
     _arrivalActual = datetime.fromtimestamp(stop["timetable"]["actualArrivalTime"] / 1000)
     arrivalActual = _arrivalActual.strftime("%H:%M") # TOOD: When will the train leave?
     _delay = stop["timetable"]["arrivalDelay"]
+
+    if stop["timetable"]["actualDepartureTime"] is not None:
+        _departureActual = datetime.fromtimestamp(stop["timetable"]["actualDepartureTime"] / 1000)
+        departureActual = _departureActual.strftime("%H:%M") # TOOD: When will the train leave?
+        departureActual = f" — {departureActual}"
+        _departureDelay = stop["timetable"]["departureDelay"]
+    else:
+        departureActual = ""
+        _departureDelay = ""
+
     stop["track"]["scheduled"] = "102"
     track = stop["track"]["actual"]
     if len(_delay) > 0:
@@ -101,7 +111,12 @@ for stop in trip["stops"]:
     else:
         delay = ""
 
-    stop_string = f"{name} ({track}) at {arrivalActual}{delay}"
+    if len(_departureDelay) > 0:
+        departureDelay = f" ({_departureDelay})"
+    else:
+        departureDelay = ""
+
+    stop_string = f"{name} ({track}) at {arrivalActual}{delay}{departureActual}{departureDelay}"
     if is_current_stop:
         next_stop=stop_string
         stop_string=f"<i>{stop_string}</i>"
