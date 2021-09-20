@@ -86,7 +86,7 @@ tooltip_lines.append("<b>Next stops</b>")
 next_stop=""
 for stop in trip["stops"]:
     _stop = {}
-    if stop["info"]["passed"]:
+    if stop["info"]["passed"] and stop["info"]["positionStatus"] != "arrived":
         continue
 
     is_current_stop = stop["station"]["evaNr"] == current_next_stop
