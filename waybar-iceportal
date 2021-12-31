@@ -99,13 +99,29 @@ for stop in trip["stops"]:
         arrivalActual = _arrivalActual.strftime("%H:%M") # TOOD: When will the train leave?
     else:
         _arrivalActual = datetime.fromtimestamp(0)
-        arrivalActual = "Unknown" # TOOD: When will the train leave?
+        arrivalActual = "Unknown"
+        if is_current_stop:
+            """
+            The variable naming is a bit hacky but gets the job done...
+            """
+            if stop["timetable"]["actualDepartureTime"] is not None:
+                _arrivalActual = datetime.fromtimestamp(stop["timetable"]["actualDepartureTime"] / 1000)
+                arrivalActual = _arrivalActual.strftime("%H:%M")
+            elif stop["timetable"]["scheduledDepartureTime"] is not None:
+                _arrivalActual = datetime.fromtimestamp(stop["timetable"]["scheduledDepartureTime"] / 1000)
+                arrivalActual = _arrivalActual.strftime("%H:%M")
+
     _delay = stop["timetable"]["arrivalDelay"]
 
     if stop["timetable"]["actualDepartureTime"] is not None:
         _departureActual = datetime.fromtimestamp(stop["timetable"]["actualDepartureTime"] / 1000)
         departureActual = _departureActual.strftime("%H:%M") # TOOD: When will the train leave?
         departureActual = f" — {departureActual}"
+        _departureDelay = stop["timetable"]["departureDelay"]
+    elif stop["timetable"]["scheduledDepartureTime"] is not None:
+        _departureScheduled = datetime.fromtimestamp(stop["timetable"]["scheduledDepartureTime"] / 1000)
+        departureScheduled = _departureScheduled.strftime("%H:%M") # TOOD: When will the train leave?
+        departureScheduled = f" — {departureScheduled}"
         _departureDelay = stop["timetable"]["departureDelay"]
     else:
         departureActual = ""
