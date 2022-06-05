@@ -21,7 +21,18 @@ parser.add_argument(
     const='__def__'
 )
 
+parser.add_argument(
+    "--login",
+    help="Automatically log in to WiFi",
+    action="store_true"
+)
+
 args = parser.parse_args()
+
+if args.login:
+    s = requests.Session()
+    r = s.get("https://wifi.bahn.de/de/")
+    r = s.post("https://wifi.bahn.de/de/", data={"CSRFToken": s.cookies["csrf"],"login": True})
 
 if args.dummy_data is None:
     try:
@@ -122,6 +133,7 @@ for stop in trip["stops"]:
         _departureScheduled = datetime.fromtimestamp(stop["timetable"]["scheduledDepartureTime"] / 1000)
         departureScheduled = _departureScheduled.strftime("%H:%M") # TOOD: When will the train leave?
         departureScheduled = f" — {departureScheduled}"
+        departureActual = departureScheduled
         _departureDelay = stop["timetable"]["departureDelay"]
     else:
         departureActual = ""
