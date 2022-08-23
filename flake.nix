@@ -9,7 +9,7 @@
 			waybar-iceportal = stdenv.mkDerivation rec {
 			  name = "waybar-iceportal";
         buildInputs = [
-          (pkgs.python39.withPackages (pp: with pp; [ requests ]))
+          (pkgs.python39.withPackages (pp: with pp; [ requests pyroute2 ]))
         ];
         unpackPhase = "true";
         installPhase = ''

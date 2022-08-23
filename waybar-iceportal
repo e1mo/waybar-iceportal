@@ -4,7 +4,10 @@ import json
 import requests
 import argparse
 import pathlib
-from datetime import datetime 
+from typing import Union
+from datetime import datetime
+from pyroute2.netlink import nl80211
+from pyroute2.iwutil import IW
 
 parser = argparse.ArgumentParser(
     description='Waybar module for the ICE Portal (Train Info, Stops, WiFi Status). Nothing will be displayed if the iceportal is not reachable (e.G. you are not in an ICE or the WiFi is down)'
@@ -22,6 +25,18 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--skip-wifi",
+    help="Skip checking if connected to WIFI@DB or WIFIonICE",
+    action="store_true"
+)
+
+parser.add_argument(
+    "--extra-wifi",
+    help="SSIDs that should also be considered as being in an ICE (case sensitive)",
+    nargs='+'
+)
+
+parser.add_argument(
     "--login",
     help="Automatically log in to WiFi",
     action="store_true"
@@ -29,11 +44,32 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+if not args.skip_wifi and args.dummy_data is None:
+    required_ssids = {"WIFI@DB", "WIFIonICE"}
+    if args.extra_wifi is not None:
+        required_ssids |= set(args.extra_wifi)
+
+    found_ssids = set()
+    with IW() as iw:
+        interfaces = [v[0] for v in iw.get_interfaces_dict().values()]
+        for ifindex in interfaces:
+            bss: Union[nl80211.nl80211cmd, None] = iw.get_associated_bss(ifindex)
+            if bss is None:
+                continue
+            attr_bss: Union[nl80211.nl80211cmd.bss, None] = bss.get_attr("NL80211_ATTR_BSS")
+            if attr_bss is None:
+                continue
+            info: list[dict] = attr_bss.get_attrs("NL80211_BSS_INFORMATION_ELEMENTS")
+            found_ssids |= set([d["SSID"].decode("utf-8") for d in info])
+
+        if required_ssids.isdisjoint(found_ssids):
+            exit(0)
+
 if args.login:
     s = requests.Session()
     r = s.get("https://wifi.bahn.de/de/")
     if "Sie sind online" not in r.text:
-        r = s.post("https://wifi.bahn.de/de/", data={"CSRFToken": s.cookies["csrf"],"login": True})
+        r = s.post("https://wifi.bahn.de/de/", data={"CSRFToken": s.cookies["csrf"], "login": True})
 
 if args.dummy_data is None:
     try:
@@ -44,7 +80,7 @@ if args.dummy_data is None:
     if not r.ok:
         exit(0)
 
-    status=r.json()
+    status = r.json()
     status_r = r
     r = requests.get("https://iceportal.de/api1/rs/tripInfo/trip")
     trip = r.json()["trip"]
@@ -52,12 +88,12 @@ if args.dummy_data is None:
 
     if args.dump is not None:
         if args.dump == "__def__":
-            out_path_root=pathlib.Path(__file__).parent / 'data-dump'
+            out_path_root = pathlib.Path(__file__).parent / 'data-dump'
         else:
-            out_path_root=pathlib.Path(args.dump)
+            out_path_root = pathlib.Path(args.dump)
 
         output_foldername = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        out_path_root /= output_foldername 
+        out_path_root /= output_foldername
         out_path_root.mkdir(parents=True)
 
         with open(out_path_root / 'status.json', 'w') as f:
@@ -71,11 +107,10 @@ else:
     with open(f"{args.dummy_data}/trip.json") as f:
         trip = json.load(f)["trip"]
 
+output = {}
+tooltip_lines = []
 
-output={}
-tooltip_lines=[]
-
-wagon_class="1st" if status["wagonClass"] == "FIRST" else "2nd"
+wagon_class = "1st" if status["wagonClass"] == "FIRST" else "2nd"
 
 starting_station = trip["stops"][0]
 
@@ -91,11 +126,10 @@ tooltip_lines.append(f"Series {status['series']} / {status['tzn']}")
 tooltip_lines.append(f"{wagon_class} Class")
 tooltip_lines.append(f"{status['speed']} Km/h\n")
 
-
-current_next_stop=trip["stopInfo"]["actualNext"]
+current_next_stop = trip["stopInfo"]["actualNext"]
 
 tooltip_lines.append("<b>Next stops</b>")
-next_stop=""
+next_stop = ""
 for stop in trip["stops"]:
     _stop = {}
     if stop["info"]["passed"] and stop["info"]["positionStatus"] != "arrived":
@@ -105,10 +139,10 @@ for stop in trip["stops"]:
     name = stop["station"]["name"]
     if stop["timetable"]["actualArrivalTime"] is not None:
         _arrivalActual = datetime.fromtimestamp(stop["timetable"]["actualArrivalTime"] / 1000)
-        arrivalActual = _arrivalActual.strftime("%H:%M") # TOOD: When will the train leave?
+        arrivalActual = _arrivalActual.strftime("%H:%M")  # TOOD: When will the train leave?
     elif stop["timetable"]["scheduledArrivalTime"] is not None:
         _arrivalActual = datetime.fromtimestamp(stop["timetable"]["scheduledArrivalTime"] / 1000)
-        arrivalActual = _arrivalActual.strftime("%H:%M") # TOOD: When will the train leave?
+        arrivalActual = _arrivalActual.strftime("%H:%M")  # TOOD: When will the train leave?
     else:
         _arrivalActual = datetime.fromtimestamp(0)
         arrivalActual = "Unknown"
@@ -127,12 +161,12 @@ for stop in trip["stops"]:
 
     if stop["timetable"]["actualDepartureTime"] is not None:
         _departureActual = datetime.fromtimestamp(stop["timetable"]["actualDepartureTime"] / 1000)
-        departureActual = _departureActual.strftime("%H:%M") # TOOD: When will the train leave?
+        departureActual = _departureActual.strftime("%H:%M")  # TOOD: When will the train leave?
         departureActual = f" — {departureActual}"
         _departureDelay = stop["timetable"]["departureDelay"]
     elif stop["timetable"]["scheduledDepartureTime"] is not None:
         _departureScheduled = datetime.fromtimestamp(stop["timetable"]["scheduledDepartureTime"] / 1000)
-        departureScheduled = _departureScheduled.strftime("%H:%M") # TOOD: When will the train leave?
+        departureScheduled = _departureScheduled.strftime("%H:%M")  # TOOD: When will the train leave?
         departureScheduled = f" — {departureScheduled}"
         departureActual = departureScheduled
         _departureDelay = stop["timetable"]["departureDelay"]
@@ -154,8 +188,8 @@ for stop in trip["stops"]:
 
     stop_string = f"{name} ({track}) at {arrivalActual}{delay}{departureActual}{departureDelay}"
     if is_current_stop:
-        next_stop=stop_string
-        stop_string=f"<i>{stop_string}</i>"
+        next_stop = stop_string
+        stop_string = f"<i>{stop_string}</i>"
 
     tooltip_lines.append(
         stop_string
@@ -165,7 +199,7 @@ wifi_current_status = status["connectivity"]["currentState"].lower()
 wifi_connectivity_seconds = status["connectivity"]["remainingTimeSeconds"]
 if wifi_connectivity_seconds is not None:
     wifi_connectivity_minutes = int((wifi_connectivity_seconds - (wifi_connectivity_seconds % 60)) / 60)
-    wifi_connectivity_seconds = str(int(wifi_connectivity_seconds - wifi_connectivity_minutes * 60)).zfill(2) # okay thats a bit dirty but it works
+    wifi_connectivity_seconds = str(int(wifi_connectivity_seconds - wifi_connectivity_minutes * 60)).zfill(2)  # okay thats a bit dirty but it works
     wifi_next_status = status["connectivity"]["nextState"].lower()
 else:
     wifi_next_status = '???'
@@ -181,7 +215,7 @@ servertime = servertime.strftime("%Y-%m-%d %H-%M-%S")
 tooltip_lines.append(f"<i>Last servertime: {servertime}</i>")
 
 output["text"] = next_stop
-#output["wifiStatus"] = f"WiFi: {status['internet']} 🚄"
+# output["wifiStatus"] = f"WiFi: {status['internet']} 🚄"
 output["tooltip"] = "\n".join(tooltip_lines)
 
 print(json.dumps(output))

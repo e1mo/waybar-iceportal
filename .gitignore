@@ -1,4 +1,5 @@
 data-dump
+result
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux
@@ -159,4 +160,3 @@ dmypy.json
 cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,linux
-result

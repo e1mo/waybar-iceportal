@@ -6,11 +6,11 @@ A simple [waybar] module to display the status of the ICE you are currently in u
 
 ## Installation
 
-0. Ensure python[^pyver] is installed: `python3 --version`
-1. Clone the git repository to a location of your choosing: `git clone https://github.com/e1mo/waybar-iceportal.git`
-2. Install the python dependencies: `pip install -r requirements.txt`
-3. Add the snipped below to your waybar configuration (usually `~/.config/waybar/config`)
-4. Reload your waybar (either restart your WM such as sway or just run `waybar`)
+1. Ensure python[^pyver] is installed: `python3 --version`
+2. Clone the git repository to a location of your choosing: `git clone https://github.com/e1mo/waybar-iceportal.git`
+3. Install the python dependencies: `pip install -r requirements.txt`
+4. Add the snippet below to your waybar configuration (usually `~/.config/waybar/config`)
+5. Reload your waybar (either restart your WM such as sway or just run `waybar`)
 
 ```json
     "modules-right": [
@@ -33,7 +33,10 @@ For further information on custom waybar modules, refer to the [waybar wiki on c
 The script has a couple of parameters to help with developing / debugging outside of ICEs or on those with broken WiFi. They can be shown using `--help`. As of writing this, the output looks like this:
 
 ```bash
-$ usage: waybar-iceportal [-h] [--dummy-data DUMMY_DATA] [--dump [DUMP]] [--login]
+$ ./waybar-iceportal --help
+
+usage: waybar-iceportal [-h] [--dummy-data DUMMY_DATA] [--dump [DUMP]] [--skip-wifi]
+                        [--extra-wifi EXTRA_WIFI [EXTRA_WIFI ...]] [--login]
 
 Waybar module for the ICE Portal (Train Info, Stops, WiFi Status). Nothing will be displayed if the
 iceportal is not reachable (e.G. you are not in an ICE or the WiFi is down)
@@ -44,6 +47,9 @@ options:
                         Folder to load dummy data from. {status,trip}.json must be present.
   --dump [DUMP]         Dump trip / status json to a subfolder within the specified folder. If no value
                         is specified, will create a folder 'data-dump' besides the script.
+  --skip-wifi           Skip checking if connected to WIFI@DB or WIFIonICE
+  --extra-wifi EXTRA_WIFI [EXTRA_WIFI ...]
+                        SSIDs that should also be considered as being in an ICE (case sensitive)
   --login               Automatically log in to WiFi
 ```
 
