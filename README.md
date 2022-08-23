@@ -21,7 +21,7 @@ A simple [waybar] module to display the status of the ICE you are currently in u
     "custom/iceportal-wifi": {
         "interval": 15,
         "return-type": "json",
-        "exec": "path/to/waybar-iceportal/waybar-iceportal",
+        "exec": "path/to/waybar-iceportal/waybar-iceportal", // Append --login if you want to auto-login into the Wifi
         "tooltip": true,
     },
 ```
@@ -33,18 +33,18 @@ For further information on custom waybar modules, refer to the [waybar wiki on c
 The script has a couple of parameters to help with developing / debugging outside of ICEs or on those with broken WiFi. They can be shown using `--help`. As of writing this, the output looks like this:
 
 ```bash
-$ ./waybar-iceportal --help
-usage: waybar-iceportal [-h] [--dummy-data DUMMY_DATA] [--dump [DUMP]]
+$ usage: waybar-iceportal [-h] [--dummy-data DUMMY_DATA] [--dump [DUMP]] [--login]
 
-Waybar module for the ICE Portal (Train Info, Stops, WIFI Status). Nothing will be displayed if the
-iceportal is not reachable (e.G. you are not in an ICE or the WIFI is down)
+Waybar module for the ICE Portal (Train Info, Stops, WiFi Status). Nothing will be displayed if the
+iceportal is not reachable (e.G. you are not in an ICE or the WiFi is down)
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --dummy-data DUMMY_DATA
                         Folder to load dummy data from. {status,trip}.json must be present.
   --dump [DUMP]         Dump trip / status json to a subfolder within the specified folder. If no value
                         is specified, will create a folder 'data-dump' besides the script.
+  --login               Automatically log in to WiFi
 ```
 
 Using the `--dummy-data` option, previously saved data (e.g. from --dump) will be used instead of fetching new data.
