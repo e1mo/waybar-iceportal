@@ -32,7 +32,8 @@ args = parser.parse_args()
 if args.login:
     s = requests.Session()
     r = s.get("https://wifi.bahn.de/de/")
-    r = s.post("https://wifi.bahn.de/de/", data={"CSRFToken": s.cookies["csrf"],"login": True})
+    if "Sie sind online" not in r.text:
+        r = s.post("https://wifi.bahn.de/de/", data={"CSRFToken": s.cookies["csrf"],"login": True})
 
 if args.dummy_data is None:
     try:
